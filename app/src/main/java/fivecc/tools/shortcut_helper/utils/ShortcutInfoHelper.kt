@@ -146,6 +146,16 @@ fun newShortcutInfoCompat(
             iconResId, iconResName, bitmapPath, iconUri,
             disabledReason, persons, locusId
             )
+        Build.VERSION_CODES.S, Build.VERSION_CODES.S_V2 -> ShortcutInfoHidden(
+            userId, id, packageName, activity, icon,
+            title, titleResId, titleResName, text, textResId, textResName,
+            disabledMessage, disabledMessageResId, disabledMessageResName,
+            categories,
+            intentsWithExtras,
+            rank, extras, lastChangedTimestamp, flags,
+            iconResId, iconResName, bitmapPath, iconUri,
+            disabledReason, persons, locusId, null
+        )
         else -> ShortcutInfoHidden(
             userId, id, packageName, activity, icon,
             title, titleResId, titleResName, text, textResId, textResName,

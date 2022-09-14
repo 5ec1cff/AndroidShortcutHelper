@@ -14,6 +14,7 @@ import android.util.ArraySet;
 import android.util.AtomicFile;
 import android.util.Log;
 import android.util.Xml;
+import android.util.XmlHidden;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
@@ -35,7 +36,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+// frameworks/base/services/core/java/com/android/server/pm/ShortcutService.java
+// frameworks/base/services/core/java/com/android/server/pm/ShortcutUser.java
+// frameworks/base/services/core/java/com/android/server/pm/ShortcutPackage.java
 public class ShortcutParser {
+    private static final String TAG = "ShortcutParser";
+
     static final String DIRECTORY_PACKAGES = "packages";
     static final String FILENAME_USER_PACKAGES = "shortcuts.xml";
     static final String DIRECTORY_PER_USER = "shortcut_service";
@@ -46,13 +52,10 @@ public class ShortcutParser {
     private static final String TAG_INTENT = "intent";
     private static final String TAG_EXTRAS = "extras";
     private static final String TAG_SHORTCUT = "shortcut";
-    private static final String TAG_SHARE_TARGET = "share-target";
     private static final String TAG_CATEGORIES = "categories";
     private static final String TAG_PERSON = "person";
 
     private static final String ATTR_NAME = "name";
-    private static final String ATTR_CALL_COUNT = "call-count";
-    private static final String ATTR_LAST_RESET = "last-reset";
     private static final String ATTR_ID = "id";
     private static final String ATTR_ACTIVITY = "activity";
     private static final String ATTR_TITLE = "title";
@@ -86,13 +89,6 @@ public class ShortcutParser {
 
     private static final String TAG_STRING_ARRAY_XMLUTILS = "string-array";
     private static final String ATTR_NAME_XMLUTILS = "name";
-
-    private static final String KEY_DYNAMIC = "dynamic";
-    private static final String KEY_MANIFEST = "manifest";
-    private static final String KEY_PINNED = "pinned";
-    private static final String KEY_BITMAPS = "bitmaps";
-    private static final String KEY_BITMAP_BYTES = "bitmapBytes";
-    private static final String TAG = "ShortcutParser";
 
     private static File getUserFile(int userId) {
         return new File(injectUserDataPath(userId), FILENAME_USER_PACKAGES);
@@ -136,12 +132,20 @@ public class ShortcutParser {
         }
     }
 
+    private static XmlPullParser newPullParserCompat(InputStream is) throws XmlPullParserException, IOException  {
+        XmlPullParser parser;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            parser = XmlHidden.resolvePullParser(is);
+        } else {
+            parser = Xml.newPullParser();
+            parser.setInput(is, StandardCharsets.UTF_8.name());
+        }
+        return parser;
+    }
+
     private static List<ShortcutInfo> loadUserInternal(int userId, InputStream is,
                                           boolean fromBackup) throws XmlPullParserException, IOException {
-        XmlPullParser parser;
-        parser = Xml.newPullParser();
-        parser.setInput(is, StandardCharsets.UTF_8.name());
-
+        XmlPullParser parser = newPullParserCompat(is);
         List<ShortcutInfo> ret = null;
 
         int type;
@@ -225,8 +229,7 @@ public class ShortcutParser {
             final BufferedInputStream bis = new BufferedInputStream(in);
 
             List<ShortcutInfo> ret = null;
-            XmlPullParser parser = Xml.newPullParser();
-            parser.setInput(bis, StandardCharsets.UTF_8.name());
+            XmlPullParser parser = newPullParserCompat(bis);
 
             int type;
             while ((type = parser.next()) != XmlPullParser.END_DOCUMENT) {
@@ -242,6 +245,7 @@ public class ShortcutParser {
             }
             return ret;
         } catch (XmlPullParserException | IOException e) {
+            Log.e(TAG, "loadPackageFromFile", e);
             return null;
         } finally {
             closeQuietly(in);

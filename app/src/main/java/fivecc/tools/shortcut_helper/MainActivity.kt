@@ -122,7 +122,7 @@ fun ShortcutScreen(selectButtonText: String? = null, onSelected: ((ShortcutInfo)
     SwipeRefresh(state = rememberSwipeRefreshState(isRefreshing),
         onRefresh = { viewModel.loadShortcuts() }
     ) {
-        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+        LazyColumn(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
             items(shortcuts) { s ->
                 ShortcutCard(shortcut = s, onClick = { showing = it })
             }

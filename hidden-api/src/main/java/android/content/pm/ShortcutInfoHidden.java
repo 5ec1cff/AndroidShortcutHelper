@@ -8,6 +8,8 @@ import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import android.os.PersistableBundle;
 
+import androidx.annotation.RequiresApi;
+
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -105,10 +107,22 @@ public class ShortcutInfoHidden {
             long lastChangedTimestamp,
             int flags, int iconResId, String iconResName, String bitmapPath, String iconUri,
             int disabledReason, Person[] persons, LocusId locusId) {
-        throw new RuntimeException("");
     }
 
-    // API 31 (S)
+    // API 31 (S), API 32 (Sv2)
+    public ShortcutInfoHidden(
+            int userId, String id, String packageName, ComponentName activity,
+            Icon icon, CharSequence title, int titleResId, String titleResName,
+            CharSequence text, int textResId, String textResName,
+            CharSequence disabledMessage, int disabledMessageResId, String disabledMessageResName,
+            Set<String> categories, Intent[] intentsWithExtras, int rank, PersistableBundle extras,
+            long lastChangedTimestamp,
+            int flags, int iconResId, String iconResName, String bitmapPath, String iconUri,
+            int disabledReason, Person[] persons, LocusId locusId,
+            @Nullable String startingThemeResName) {
+    }
+
+    // API 33
     public ShortcutInfoHidden(
             int userId, String id, String packageName, ComponentName activity,
             Icon icon, CharSequence title, int titleResId, String titleResName,
@@ -120,6 +134,5 @@ public class ShortcutInfoHidden {
             int disabledReason, Person[] persons, LocusId locusId,
             @Nullable String startingThemeResName,
             @Nullable Map<String, Map<String, List<String>>> capabilityBindings) {
-        throw new RuntimeException("");
     }
 }

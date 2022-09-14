@@ -29,6 +29,7 @@ android {
 
 dependencies {
     implementation("org.jetbrains:annotations:15.0")
+    implementation("androidx.annotation:annotation:1.4.0")
     val hiddenApiRefineVersion: String by project
     annotationProcessor("dev.rikka.tools.refine:annotation-processor:$hiddenApiRefineVersion")
     compileOnly("dev.rikka.tools.refine:annotation:$hiddenApiRefineVersion")
