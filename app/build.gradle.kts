@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -7,7 +10,25 @@ plugins {
 
 val composeVersion: String by project
 
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = if (keystorePropertiesFile.exists() && keystorePropertiesFile.isFile) {
+    Properties().apply {
+        load(FileInputStream(keystorePropertiesFile))
+    }
+} else null
+
 android {
+    if (keystoreProperties != null) {
+        signingConfigs {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     compileSdk = 33
 
     defaultConfig {
@@ -24,9 +45,16 @@ android {
     }
 
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+        }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (keystoreProperties != null) {
+                signingConfig = signingConfigs["release"]
+            }
         }
     }
     compileOptions {
@@ -60,14 +88,14 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview:$composeVersion")
     implementation("androidx.activity:activity-compose:1.5.1")
 
-    val lifecycle_version = "2.6.0-alpha01"
+    val lifecycleVersion = "2.6.0-alpha01"
 
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_version")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:$lifecycle_version")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:$lifecycle_version")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:$lifecycle_version")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate:$lifecycle_version")
-    kapt("androidx.lifecycle:lifecycle-compiler:$lifecycle_version")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:$lifecycleVersion")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate:$lifecycleVersion")
+    kapt("androidx.lifecycle:lifecycle-compiler:$lifecycleVersion")
 
     val libsuVersion = "5.0.2"
     implementation("com.github.topjohnwu.libsu:core:$libsuVersion")
