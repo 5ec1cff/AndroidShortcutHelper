@@ -7,8 +7,6 @@ import android.os.ParcelFileDescriptor;
 // Declare any non-default types here with import statements
 
 interface IRootHelper {
-    String hello();
-    List<ShortcutInfo> getShortcuts();
-    IBinder getFS();
+    List<ShortcutInfo> getShortcuts(String method, int user, int flags);
     ParcelFileDescriptor getShortcutIconFd(String packageName, String id, int userId);
 }

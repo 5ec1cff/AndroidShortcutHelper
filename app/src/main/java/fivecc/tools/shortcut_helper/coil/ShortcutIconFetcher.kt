@@ -25,47 +25,24 @@ class ShortcutIconFetcher(
 ) : Fetcher {
     companion object {
         private const val TAG = "ShortcutIconFetcher"
-        private const val USE_API = true
     }
 
     @OptIn(ExperimentalCoilApi::class)
     override suspend fun fetch(): FetchResult? {
         if (info.hasIconFile()) {
-            if (USE_API) {
-                RootHelperService.helper?.getShortcutIconFd(
-                    info.`package`, info.id, 0
-                )?.also { fd ->
-                    return SourceResult(
-                        source = ImageSource(
-                            source = ParcelFileDescriptor.AutoCloseInputStream(fd).source()
-                                .buffer(),
-                            context = options.context,
-                            metadata = null
-                        ),
-                        mimeType = null,
-                        dataSource = DataSource.DISK
-                    )
-                }
-            } else {
-                val iconFile = info.getIconFile()
-                if (iconFile != null) {
-                    kotlin.runCatching {
-                        if (iconFile.exists() && iconFile.isFile) {
-                            return SourceResult(
-                                source = ImageSource(
-                                    source = iconFile.newInputStream().source().buffer(),
-                                    context = options.context,
-                                    metadata = null
-                                ),
-                                mimeType = MimeTypeMap.getSingleton()
-                                    .getMimeTypeFromExtension(iconFile.extension),
-                                dataSource = DataSource.DISK
-                            )
-                        }
-                    }.onFailure {
-                        Log.e(TAG, "failed to fetch icon from root: $iconFile")
-                    }
-                }
+            RootHelperService.helper?.getShortcutIconFd(
+                info.`package`, info.id, 0
+            )?.also { fd ->
+                return SourceResult(
+                    source = ImageSource(
+                        source = ParcelFileDescriptor.AutoCloseInputStream(fd).source()
+                            .buffer(),
+                        context = options.context,
+                        metadata = null
+                    ),
+                    mimeType = null,
+                    dataSource = DataSource.DISK
+                )
             }
         } else if (info.hasIconResource()) {
             val res = options.context.packageManager.getResourcesForApplication(info.`package`)

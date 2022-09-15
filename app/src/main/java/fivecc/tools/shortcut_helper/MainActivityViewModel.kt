@@ -3,6 +3,7 @@ package fivecc.tools.shortcut_helper
 import android.content.pm.ShortcutInfo
 import android.os.Handler
 import android.os.Looper
+import android.os.UserHandleHidden
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -10,6 +11,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import fivecc.tools.shortcut_helper.utils.MATCH_ALL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,11 +32,11 @@ class MainActivityViewModel : ViewModel() {
 
     val shortcutList = mutableStateListOf<ShortcutInfo>()
 
-    fun loadShortcuts() {
+    fun loadShortcuts(method: String = RootHelperService.METHOD_SYSTEM_API) {
         viewModelScope.launch {
             _isRefreshing.emit(true)
             val newList = withContext(Dispatchers.IO) {
-                RootHelperService.helper?.shortcuts
+                RootHelperService.helper?.getShortcuts(method, UserHandleHidden.myUserId(), MATCH_ALL)
             }
             shortcutList.clear()
             newList?.also { shortcutList.addAll(it) }

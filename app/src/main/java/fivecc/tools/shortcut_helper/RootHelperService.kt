@@ -9,18 +9,15 @@ import android.content.ServiceConnection
 import android.content.pm.ILauncherApps
 import android.content.pm.IShortcutService
 import android.content.pm.ShortcutInfo
-import android.ddm.DdmHandleAppName
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
-import android.os.Process
 import android.os.ServiceManager
 import android.system.Os
 import androidx.annotation.MainThread
 import androidx.lifecycle.MutableLiveData
 import com.topjohnwu.superuser.ipc.RootService
-import com.topjohnwu.superuser.nio.FileSystemManager
 import fivecc.tools.shortcut_helper.utils.ShortcutParser
-import fivecc.tools.shortcut_helper.utils.getPinnedShortcutCompat
+import fivecc.tools.shortcut_helper.utils.getShortcutInfoCompat
 
 enum class ServiceState {
     STOPPED,
@@ -31,28 +28,25 @@ enum class ServiceState {
 @Suppress("Unchecked_Cast")
 class RootHelperService : RootService() {
     companion object {
+        const val METHOD_PARSE_FILE = "parse_file"
+        const val METHOD_SYSTEM_API = "system_api"
         val serviceState = MutableLiveData(ServiceState.STOPPED)
         var helper: IRootHelper? = null
-            private set
-        var remoteFs: FileSystemManager? = null
             private set
         private val mConnection = object : ServiceConnection, IBinder.DeathRecipient {
             override fun onServiceConnected(p0: ComponentName?, binder: IBinder) {
                 binder.linkToDeath(this, 0)
                 helper = IRootHelper.Stub.asInterface(binder)
-                remoteFs = FileSystemManager.getRemote(helper!!.fs)
                 serviceState.value = ServiceState.RUNNING
             }
 
             override fun onServiceDisconnected(p0: ComponentName?) {
                 helper = null
-                remoteFs = null
                 serviceState.value = ServiceState.STOPPED
             }
 
             override fun binderDied() {
                 helper = null
-                remoteFs = null
                 serviceState.postValue(ServiceState.STOPPED)
             }
         }
@@ -83,13 +77,23 @@ class RootHelperService : RootService() {
     }
 
     private val mHelper = object : IRootHelper.Stub() {
-        override fun hello(): String {
-            return "hello from ${Process.myPid()}:${Process.myUid()}"
+        override fun getShortcuts(method: String, user: Int, flags: Int): MutableList<ShortcutInfo>? {
+            return when (method) {
+                METHOD_PARSE_FILE -> {
+                    ShortcutParser.loadUserLocked(user)
+                }
+                METHOD_SYSTEM_API -> {
+                    val result = mutableListOf<ShortcutInfo>()
+                    packageManager.getInstalledPackages(0).forEach {
+                        result.addAll(shortcutService.getShortcutInfoCompat(it.packageName, user, flags))
+                    }
+                    result
+                }
+                else -> {
+                    throw IllegalArgumentException("unknown method $method")
+                }
+            }
         }
-
-        override fun getShortcuts(): MutableList<ShortcutInfo>? = getShortcutsImpl()
-
-        override fun getFS(): IBinder = FileSystemManager.getService()
 
         override fun getShortcutIconFd(
             packageName: String?,
@@ -98,10 +102,6 @@ class RootHelperService : RootService() {
         ): ParcelFileDescriptor {
             return launcherAppsService.getShortcutIconFd("android", packageName, id, userId)
         }
-    }
-
-    private fun getShortcutsImpl(): MutableList<ShortcutInfo>? {
-        return ShortcutParser.loadUserLocked(0)
     }
 
     override fun onCreate() {

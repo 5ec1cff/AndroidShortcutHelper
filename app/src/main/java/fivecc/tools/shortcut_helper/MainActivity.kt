@@ -13,7 +13,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -38,7 +40,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         RootHelperService.start()
-        val viewModel: MainActivityViewModel by viewModels()
         val selectButtonText: String
         val onSelected: (ShortcutInfo) -> Unit = if (intent.action == Intent.ACTION_CREATE_SHORTCUT) {
             selectButtonText = "select"
@@ -63,14 +64,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        RootHelperService.serviceState.observe(this) {
-            if (it == ServiceState.RUNNING) {
-                viewModel.loadShortcuts()
-            }
-        }
         setContent {
             ShortcutTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -122,9 +117,21 @@ fun ShortcutScreen(selectButtonText: String? = null, onSelected: ((ShortcutInfo)
     SwipeRefresh(state = rememberSwipeRefreshState(isRefreshing),
         onRefresh = { viewModel.loadShortcuts() }
     ) {
-        LazyColumn(modifier = Modifier.fillMaxWidth().fillMaxHeight()) {
-            items(shortcuts) { s ->
-                ShortcutCard(shortcut = s, onClick = { showing = it })
+        if (shortcuts.isEmpty()) {
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+                contentAlignment = Alignment.Center
+            ) {
+                TipScreen(text = "Nothing to show, try refresh")
+            }
+        } else {
+            LazyColumn(modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight()) {
+                items(shortcuts) { s ->
+                    ShortcutCard(shortcut = s, onClick = { showing = it })
+                }
             }
         }
     }

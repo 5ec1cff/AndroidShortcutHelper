@@ -18,17 +18,47 @@ import fivecc.tools.shortcut_helper.App
 import fivecc.tools.shortcut_helper.RootHelperService
 import java.io.File
 
-fun IShortcutService.getPinnedShortcutCompat(packageName: String, userId: Int): ParceledListSlice<ShortcutInfo> {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-        return getPinnedShortcuts(packageName, userId) as ParceledListSlice<ShortcutInfo>
-    } else {
-        return getShortcuts(packageName, ShortcutManager.FLAG_MATCH_PINNED, userId) as ParceledListSlice<ShortcutInfo>
-    }
-}
+const val MATCH_PINNED = 1
+const val MATCH_DYNAMIC = 1 shl 1
+const val MATCH_MANIFEST = 1 shl 2
+const val MATCH_CACHED = 1 shl 3
+const val MATCH_ALL = MATCH_PINNED or MATCH_DYNAMIC or MATCH_MANIFEST or MATCH_CACHED
 
-fun ShortcutInfo.getIconFile(): ExtendedFile? {
-    this as ShortcutInfoHidden
-    return bitmapPath?.let { RootHelperService.remoteFs?.getFile(it) }
+/**
+ * Use IShortcutManager API to get ShortcutInfo s
+ * which `bitmapPath` are empty
+ */
+fun IShortcutService.getShortcutInfoCompat(
+    packageName: String, userId: Int, matchFlags: Int = MATCH_ALL
+): List<ShortcutInfo> {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        val result = mutableListOf<ShortcutInfo>()
+        if (matchFlags and MATCH_PINNED != 0) {
+            result.addAll(getPinnedShortcuts(packageName, userId).list as List<ShortcutInfo>)
+        }
+        if (matchFlags and MATCH_MANIFEST != 0) {
+            result.addAll(getManifestShortcuts(packageName, userId).list as List<ShortcutInfo>)
+        }
+        if (matchFlags and MATCH_DYNAMIC != 0) {
+            result.addAll(getDynamicShortcuts(packageName, userId).list as List<ShortcutInfo>)
+        }
+        return result
+    } else {
+        var flags = 0
+        if (matchFlags and MATCH_PINNED != 0) {
+            flags = flags or ShortcutManager.FLAG_MATCH_PINNED
+        }
+        if (matchFlags and MATCH_MANIFEST != 0) {
+            flags = flags or ShortcutManager.FLAG_MATCH_MANIFEST
+        }
+        if (matchFlags and MATCH_DYNAMIC != 0) {
+            flags = flags or ShortcutManager.FLAG_MATCH_DYNAMIC
+        }
+        if (matchFlags and MATCH_CACHED != 0) {
+            flags = flags or ShortcutManager.FLAG_MATCH_CACHED
+        }
+        return getShortcuts(packageName, flags, userId).list as List<ShortcutInfo>
+    }
 }
 
 fun ShortcutInfo.hasIconFile(): Boolean {
@@ -36,19 +66,9 @@ fun ShortcutInfo.hasIconFile(): Boolean {
     return hasIconFile()
 }
 
-fun ShortcutInfo.hasIconUri(): Boolean {
-    this as ShortcutInfoHidden
-    return hasIconUri()
-}
-
 fun ShortcutInfo.hasIconResource(): Boolean {
     this as ShortcutInfoHidden
     return hasIconResource()
-}
-
-fun ShortcutInfo.hasAdaptiveBitmap(): Boolean {
-    this as ShortcutInfoHidden
-    return hasAdaptiveBitmap()
 }
 
 fun ShortcutInfo.getIconResourceId(): Int {
