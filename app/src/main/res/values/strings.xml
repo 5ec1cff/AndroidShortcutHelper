@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">Shortcut</string>
+
+    <string name="empty_string" />
+    <string name="work_mode_title">Work Mode</string>
+    <string name="work_mode_system_api">System API</string>
+    <string name="work_mode_parse_xml">Parse XML</string>
 </resources>

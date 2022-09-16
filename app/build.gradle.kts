@@ -1,5 +1,5 @@
-import java.util.Properties
 import java.io.FileInputStream
+import java.util.*
 
 plugins {
     id("com.android.application")
@@ -87,6 +87,7 @@ dependencies {
     implementation("androidx.compose.runtime:runtime-livedata:$composeVersion")
     implementation("androidx.compose.ui:ui-tooling-preview:$composeVersion")
     implementation("androidx.activity:activity-compose:1.5.1")
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
 
     val lifecycleVersion = "2.6.0-alpha01"
 

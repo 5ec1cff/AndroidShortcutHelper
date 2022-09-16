@@ -8,15 +8,11 @@ import android.content.Intent
 import android.content.LocusId
 import android.content.pm.*
 import android.content.res.Resources
-import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.PersistableBundle
 import android.util.Log
-import com.topjohnwu.superuser.nio.ExtendedFile
 import fivecc.tools.shortcut_helper.App
-import fivecc.tools.shortcut_helper.RootHelperService
-import java.io.File
 
 const val MATCH_PINNED = 1
 const val MATCH_DYNAMIC = 1 shl 1
@@ -57,7 +53,11 @@ fun IShortcutService.getShortcutInfoCompat(
         if (matchFlags and MATCH_CACHED != 0) {
             flags = flags or ShortcutManager.FLAG_MATCH_CACHED
         }
-        return getShortcuts(packageName, flags, userId).list as List<ShortcutInfo>
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.R || Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return getShortcuts(packageName, flags, userId).list as List<ShortcutInfo>
+        } else {
+            return (this as IShortcutServiceForS).getShortcuts(packageName, flags, userId).get().list as List<ShortcutInfo>
+        }
     }
 }
 

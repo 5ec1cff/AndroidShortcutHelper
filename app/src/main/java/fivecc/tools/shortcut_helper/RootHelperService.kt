@@ -1,4 +1,4 @@
-@file:Suppress("DEPRECATION")
+@file:Suppress("DEPRECATION", "CAST_NEVER_SUCCEEDS")
 
 package fivecc.tools.shortcut_helper
 
@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.ILauncherApps
 import android.content.pm.IShortcutService
+import android.content.pm.PackageManagerHidden
 import android.content.pm.ShortcutInfo
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
@@ -84,7 +85,7 @@ class RootHelperService : RootService() {
                 }
                 METHOD_SYSTEM_API -> {
                     val result = mutableListOf<ShortcutInfo>()
-                    packageManager.getInstalledPackages(0).forEach {
+                    (packageManager as PackageManagerHidden).getInstalledPackagesAsUser(0, user).forEach {
                         result.addAll(shortcutService.getShortcutInfoCompat(it.packageName, user, flags))
                     }
                     result

@@ -13,9 +13,12 @@ public interface IShortcutService {
     ParceledListSlice getDynamicShortcuts(String packageName, int userId);
     ParceledListSlice getManifestShortcuts(String packageName, int userId);
 
-    // API 30 and above
+    // API 30 & 33
     @RequiresApi(Build.VERSION_CODES.R)
     ParceledListSlice getShortcuts(String packageName, int matchFlags, int userId);
+
+    // API 31 & 32
+    // AndroidFuture<ParceledListSlice> getShortcuts(String packageName, int matchFlags, int userId);
 
     class Stub extends Binder {
         public static IShortcutService asInterface(IBinder b) {

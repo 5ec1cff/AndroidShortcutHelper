@@ -8,7 +8,6 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +15,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -23,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -70,8 +72,17 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    var settingsDialogShown by remember { mutableStateOf(false) }
                     Scaffold(
-                        topBar = { TopAppBar(title = { Text("Shortcuts") }, modifier = Modifier.shadow(8.dp)) },
+                        topBar = {
+                            TopAppBar(title = { Text("Shortcuts") },
+                                actions = {
+                                    IconButton(onClick = { settingsDialogShown = true }) {
+                                        Icon(Icons.Filled.Settings, contentDescription = "settings")
+                                    }
+                                },
+                                modifier = Modifier.shadow(8.dp))
+                        },
                         content = {
                             Box(modifier = Modifier
                                 .fillMaxSize()
@@ -95,6 +106,16 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
+                            if (settingsDialogShown) {
+                                BaseDialog(onDismiss = { settingsDialogShown = false }) {
+                                    Box(modifier = Modifier
+                                        .defaultMinSize(minHeight = 200.dp)
+                                        .padding(16.dp)
+                                    ) {
+                                        MyListPreference(listPreference = Settings.WORK_MODE)
+                                    }
+                                }
+                            }
                         }
                     )
                 }
@@ -109,38 +130,55 @@ fun TipScreen(text: String) {
 }
 
 @Composable
-fun ShortcutScreen(selectButtonText: String? = null, onSelected: ((ShortcutInfo) -> Unit)? = null) {
+fun ShortcutScreen(
+    selectButtonText: String? = null,
+    onSelected: ((ShortcutInfo) -> Unit)? = null
+) {
     val viewModel: MainActivityViewModel = viewModel()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val shortcuts = viewModel.shortcutList
-    var showing by remember { mutableStateOf<ShortcutInfo?>(null) }
-    SwipeRefresh(state = rememberSwipeRefreshState(isRefreshing),
-        onRefresh = { viewModel.loadShortcuts() }
-    ) {
-        if (shortcuts.isEmpty()) {
-            Box(modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-                contentAlignment = Alignment.Center
-            ) {
-                TipScreen(text = "Nothing to show, try refresh")
-            }
-        } else {
-            LazyColumn(modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()) {
-                items(shortcuts) { s ->
-                    ShortcutCard(shortcut = s, onClick = { showing = it })
+    var dialogShowing by remember { mutableStateOf<ShortcutInfo?>(null) }
+    val context = LocalContext.current
+    val settings = Settings(context)
+    val workMode by settings.getValue(Settings.WORK_MODE.preferencesKey).collectAsState(initial = null)
+    if (workMode == null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            TipScreen(text = "Please configure work mode first")
+        }
+    } else {
+        SwipeRefresh(state = rememberSwipeRefreshState(isRefreshing),
+            onRefresh = { viewModel.loadShortcuts(workMode!!) }
+        ) {
+            if (shortcuts.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TipScreen(text = "Nothing to show, try refresh")
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight()
+                ) {
+                    items(shortcuts) { s ->
+                        ShortcutCard(shortcut = s, onClick = { dialogShowing = it })
+                    }
                 }
             }
         }
     }
-    showing?.let { s ->
+    dialogShowing?.let { s ->
         ShortcutDialog(shortcut = s,
-            onDismiss = { showing = null },
-            onSelected =
-            {
-                showing = null
+            onDismiss = { dialogShowing = null },
+            onSelected = {
+                dialogShowing = null
                 onSelected?.invoke(it)
             },
             selectButtonText = selectButtonText)
@@ -166,6 +204,18 @@ fun ShortcutCard(
             Text(text = shortcut.getLabel(), maxLines = 1, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(4.dp))
             Text(text = AppInfoCache.getAppLabel(shortcut.`package`))
+        }
+    }
+}
+
+@Composable
+fun BaseDialog(
+    onDismiss: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Dialog(onDismissRequest = { onDismiss() }) {
+        Card(modifier = Modifier.shadow(8.dp), shape = RoundedCornerShape(12.dp)) {
+            content()
         }
     }
 }
@@ -198,7 +248,8 @@ fun ShortcutDialog(
                     }
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-                MyTextField(title = "ID", content = "${shortcut.id}")
+                MyTextField(title = "Package Name", content = shortcut.`package`)
+                MyTextField(title = "ID", content = shortcut.id)
                 MyTextField(title = "Uri", content = "${shortcut.intent?.toUri(0)}")
                 if (onSelected != null && selectButtonText != null) {
                     Box(contentAlignment = Alignment.BottomEnd, modifier = Modifier.fillMaxWidth()) {
