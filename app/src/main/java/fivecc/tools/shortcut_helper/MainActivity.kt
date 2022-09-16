@@ -65,6 +65,11 @@ class MainActivity : ComponentActivity() {
                     Log.e("MainActivity", "failed to start ${s.intent}", e)
                 }
             }
+            /*
+            { s: ShortcutInfo ->
+                RootHelperService.helper?.startShortcut(s)
+            }
+            */
         }
         setContent {
             ShortcutTheme {

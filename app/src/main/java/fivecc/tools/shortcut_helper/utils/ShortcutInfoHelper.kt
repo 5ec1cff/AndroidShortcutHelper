@@ -76,6 +76,11 @@ fun ShortcutInfo.getIconResourceId(): Int {
     return getIconResourceId()
 }
 
+fun ShortcutInfo.getUserId(): Int {
+    this as ShortcutInfoHidden
+    return userId
+}
+
 fun ShortcutInfo.getLabel(): String {
     shortLabel?.also { return it.toString() }
     longLabel?.also { return it.toString() }

@@ -8,8 +8,6 @@ import android.graphics.drawable.Icon;
 import android.os.Bundle;
 import android.os.PersistableBundle;
 
-import androidx.annotation.RequiresApi;
-
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -62,6 +60,10 @@ public class ShortcutInfoHidden {
     }
 
     public int getLongLabelResourceId() {
+        throw new RuntimeException("");
+    }
+
+    public int getUserId() {
         throw new RuntimeException("");
     }
 

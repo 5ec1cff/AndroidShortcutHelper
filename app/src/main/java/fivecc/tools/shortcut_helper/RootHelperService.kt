@@ -10,6 +10,7 @@ import android.content.pm.ILauncherApps
 import android.content.pm.IShortcutService
 import android.content.pm.PackageManagerHidden
 import android.content.pm.ShortcutInfo
+import android.os.Build
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import android.os.ServiceManager
@@ -19,6 +20,7 @@ import androidx.lifecycle.MutableLiveData
 import com.topjohnwu.superuser.ipc.RootService
 import fivecc.tools.shortcut_helper.utils.ShortcutParser
 import fivecc.tools.shortcut_helper.utils.getShortcutInfoCompat
+import fivecc.tools.shortcut_helper.utils.getUserId
 
 enum class ServiceState {
     STOPPED,
@@ -102,6 +104,23 @@ class RootHelperService : RootService() {
             userId: Int
         ): ParcelFileDescriptor {
             return launcherAppsService.getShortcutIconFd("android", packageName, id, userId)
+        }
+
+        override fun startShortcut(shortcutInfo: ShortcutInfo) {
+            // Start shortcuts by this API may be rejected by system
+            // for starting from background, even if we're system ...
+            val id = shortcutInfo.id
+            val packageName = shortcutInfo.`package`
+            val userId = shortcutInfo.getUserId()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                launcherAppsService.startShortcut(
+                    "android", packageName, null,
+                    id, null, null, userId)
+            } else {
+                launcherAppsService.startShortcut(
+                    "android", packageName,
+                    id, null, null, userId)
+            }
         }
     }
 
