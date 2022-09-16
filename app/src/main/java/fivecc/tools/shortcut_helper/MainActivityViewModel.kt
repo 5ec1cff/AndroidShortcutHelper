@@ -21,12 +21,21 @@ class MainActivityViewModel : ViewModel() {
 
     val shortcutList = mutableStateListOf<ShortcutInfo>()
 
-    fun loadShortcuts(method: String = RootHelperService.METHOD_SYSTEM_API) {
+    fun loadShortcuts(
+        method: String,
+        onError: ((t: Throwable) -> Unit)? = null
+    ) {
         viewModelScope.launch {
             _isRefreshing.emit(true)
-            val newList = withContext(Dispatchers.IO) {
-                RootHelperService.helper?.getShortcuts(method, UserHandleHidden.myUserId(), MATCH_ALL)
-            }
+            val newList = kotlin.runCatching {
+                withContext(Dispatchers.IO) {
+                    RootHelperService.helper?.getShortcuts(
+                        method,
+                        UserHandleHidden.myUserId(),
+                        MATCH_ALL
+                    )
+                }
+            }.onFailure { onError?.invoke(it) }.getOrNull()
             shortcutList.clear()
             newList?.also { shortcutList.addAll(it) }
             _isRefreshing.emit(false)

@@ -2,10 +2,10 @@
 
 package fivecc.tools.shortcut_helper
 
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.ShortcutInfo
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
@@ -36,6 +36,7 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import fivecc.tools.shortcut_helper.ui.theme.ShortcutTheme
 import fivecc.tools.shortcut_helper.utils.getLabel
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -43,34 +44,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         RootHelperService.start()
         val selectButtonText: String
-        val onSelected: (ShortcutInfo) -> Unit = if (intent.action == Intent.ACTION_CREATE_SHORTCUT) {
-            selectButtonText = "select"
-            { s: ShortcutInfo ->
-                setResult(RESULT_OK, Intent()
-                    .putExtra(Intent.EXTRA_SHORTCUT_INTENT, s.intent)
-                    .putExtra(Intent.EXTRA_SHORTCUT_NAME, s.getLabel())
-                )
-                finish()
-            }
-        } else {
-            selectButtonText = "launch"
-            { s: ShortcutInfo ->
-                try {
-                    s.intent?.also { intent ->
-                        val launchIntent = Intent(intent)
-                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        startActivity(launchIntent)
-                    }
-                } catch (e: Throwable) {
-                    Log.e("MainActivity", "failed to start ${s.intent}", e)
-                }
-            }
-            /*
-            { s: ShortcutInfo ->
-                RootHelperService.helper?.startShortcut(s)
-            }
-            */
-        }
+        val action = intent.action
         setContent {
             ShortcutTheme {
                 Surface(
@@ -78,7 +52,9 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     var settingsDialogShown by remember { mutableStateOf(false) }
+                    val snackBarHostState = remember { SnackbarHostState() }
                     Scaffold(
+                        snackbarHost = { SnackbarHost(hostState = snackBarHostState) },
                         topBar = {
                             TopAppBar(title = { Text("Shortcuts") },
                                 actions = {
@@ -98,7 +74,7 @@ class MainActivity : ComponentActivity() {
                                 val state by RootHelperService.serviceState.observeAsState()
                                 when (state) {
                                     ServiceState.RUNNING -> {
-                                        ShortcutScreen(onSelected = onSelected, selectButtonText = selectButtonText)
+                                        ShortcutScreen(snackBarHostState = snackBarHostState, action = action)
                                     }
                                     ServiceState.STARTING -> {
                                         TipScreen("service is starting")
@@ -136,8 +112,8 @@ fun TipScreen(text: String) {
 
 @Composable
 fun ShortcutScreen(
-    selectButtonText: String? = null,
-    onSelected: ((ShortcutInfo) -> Unit)? = null
+    snackBarHostState: SnackbarHostState,
+    action: String?
 ) {
     val viewModel: MainActivityViewModel = viewModel()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
@@ -146,6 +122,8 @@ fun ShortcutScreen(
     val context = LocalContext.current
     val settings = Settings(context)
     val workMode by settings.getValue(Settings.WORK_MODE.preferencesKey).collectAsState(initial = null)
+    val scope = rememberCoroutineScope()
+    val selectButtonText = if (action == Intent.ACTION_CREATE_SHORTCUT) "select" else "launch"
     if (workMode == null) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -155,7 +133,13 @@ fun ShortcutScreen(
         }
     } else {
         SwipeRefresh(state = rememberSwipeRefreshState(isRefreshing),
-            onRefresh = { viewModel.loadShortcuts(workMode!!) }
+            onRefresh = {
+                viewModel.loadShortcuts(workMode!!, onError = {
+                    scope.launch {
+                        snackBarHostState.showSnackbar("Error: ${it.message}")
+                    }
+                })
+            }
         ) {
             if (shortcuts.isEmpty()) {
                 Box(
@@ -184,9 +168,31 @@ fun ShortcutScreen(
             onDismiss = { dialogShowing = null },
             onSelected = {
                 dialogShowing = null
-                onSelected?.invoke(it)
+                if (action == Intent.ACTION_CREATE_SHORTCUT) {
+                    if (context is Activity) {
+                        context.setResult(
+                            ComponentActivity.RESULT_OK, Intent()
+                                .putExtra(Intent.EXTRA_SHORTCUT_INTENT, it.intent)
+                                .putExtra(Intent.EXTRA_SHORTCUT_NAME, it.getLabel())
+                        )
+                        context.finish()
+                    }
+                } else {
+                    runCatching {
+                        s.intent?.also { intent ->
+                            val launchIntent = Intent(intent)
+                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(launchIntent)
+                        }
+                    }.onFailure { t ->
+                        scope.launch {
+                            snackBarHostState.showSnackbar("Error: ${t.message}")
+                        }
+                    }
+                }
             },
-            selectButtonText = selectButtonText)
+            selectButtonText = selectButtonText
+        )
     }
 }
 
